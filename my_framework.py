@@ -95,6 +95,9 @@ class Tensor:
 # --- 3. Layers ---
 
 class Module:
+    def forward(self, x):
+        raise NotImplementedError("Subclasses must implement forward()")
+    
     def __call__(self, x): return self.forward(x)
     def parameters(self): return []
 
@@ -166,18 +169,6 @@ class Conv2d(Module):
                            N, C, H, W, self.out_c, self.k, self.s, self.p)
         self.cache = x
         return out
-
-    # Simplified Backward (Placeholder: In full assignment, implement full conv backward in C++)
-    # For now, we return dummy gradients to allow code to run, as implementing 
-    # full conv backward from scratch in C++ is huge. 
-    # *Note*: The assignment requires it. I provided the structure in backend.cpp
-    # You would simply add `conv2d_backward` in C++ similar to linear_backward.
-    def backward(self, dout):
-        N, C, H, W = self.cache.shape
-        dx = Tensor(self.cache.shape)
-        if self.weights.grad is None: self.weights.zero_grad()
-        # Call lib.conv2d_backward(...) here
-        return dx
 
     def backward(self, dout):
         N, C, H, W = self.cache.shape
@@ -255,6 +246,9 @@ class CrossEntropyLoss:
         
         # Targets assumed one-hot tensor
         grad = Tensor(logits.shape)
+        
+        # Zero-initialize gradient before passing to C++ (prevent uninitialized memory)
+        ctypes.memset(grad.data, 0, ctypes.sizeof(grad.array_type))
         
         # Returns float loss, writes gradient into `grad`
         loss_val = lib.cross_entropy_loss(logits.ptr, targets.ptr, grad.ptr, batch, classes)

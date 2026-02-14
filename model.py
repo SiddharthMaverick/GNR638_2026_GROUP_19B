@@ -1,6 +1,7 @@
 
 import my_framework as nn
-CLASSES=100
+
+CLASSES = 10  # data_1 has 10 classes (digits 0-9)
 # --- Model Definition ---
 class LeNet(nn.Module):
     def __init__(self):

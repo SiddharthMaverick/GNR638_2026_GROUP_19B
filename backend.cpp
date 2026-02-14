@@ -1,138 +1,121 @@
-#include<iostream>
-#include<vector>
-#include<cmath>
-#include<random>
-#include<cstring>
-#include<omp.h>
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <random>
+#include <cstring>
+#include <omp.h>
 
-using namespace std;
+extern "C" {
 
-extern "C"{
-
-    void init_weights(float* data, int size, int fan_in,int seed){
-
-        mt19937 gen(seed);
-
-        float limit=sqrt(2.0f /(float)fan_in);
-        normal_distribution<float> dist(0.0f, limit);
-
-        for(int i=0;i<size;i++)
-        {
-            data[i]=dist(gen);
+    // --- Memory & Utils ---
+    // We rely on Python to manage memory allocation to keep C++ stateless and simple.
+    // Random initialization (Xavier/He)
+    void init_weights(float* data, int size, int fan_in, int fan_out,int seed) {
+        std::mt19937 gen(seed);
+        // He Initialization
+        float limit = sqrt(2.0f / (float)fan_in);
+        std::normal_distribution<float> dist(0.0, limit);
+        for (int i = 0; i < size; i++) {
+            data[i] = dist(gen);
         }
-
     }
 
-    void linear_forward(float* x, float* w, float* b, float* out, int batch, int in_feat, int out_feat)
-    {
+    // --- Layers (Forward & Backward) ---
+
+    // 1. Fully Connected (Linear)
+    // Forward: Y = X @ W + B
+    // X: (B, I), W: (I, O), Output: (B, O)
+    void linear_forward(float* x, float* w, float* b, float* out, int batch, int in_feat, int out_feat) {
         #pragma omp parallel for collapse(2)
-        
-        for(int i=0;i<batch;i++)
-        {
-            for(int j=0;j<out_feat;j++)
-            {
-                float sum=(b)?b[j]:0.0f;
-                for(int k=0;k<in_feat;k++)
-                {
-                    sum+=x[i*in_feat+k]*w[k*out_feat+j];
+        for (int i = 0; i < batch; i++) {
+            for (int j = 0; j < out_feat; j++) {
+                float sum = (b) ? b[j] : 0.0f;
+                for (int k = 0; k < in_feat; k++) {
+                    sum += x[i * in_feat + k] * w[k * out_feat + j];
                 }
-                out[i*out_feat+j]=sum;
+                out[i * out_feat + j] = sum;
             }
         }
     }
 
-    void linear_backward(float* x, float* w, float*dout, float*dx, float* dw,float*db, int batch,int in_feat, int out_feat)
-    {
-
-        //Gradient for dW
+    // Backward: dL/dX = dL/dY @ W.T, dL/dW = X.T @ dL/dY
+    void linear_backward(float* x, float* w, float* dout, float* dx, float* dw, float* db, int batch, int in_feat, int out_feat) {
+        // dW
         #pragma omp parallel for collapse(2)
-        for(int r=0;r<in_feat;r++)
-        {
-            for(int c=0;c<out_feat;c++)
-            {
-                float sum=0.0f;
-                for(int i=0;i<batch;i++)
-                {
-                    sum+=x[i*in_feat+r]*dout[i*out_feat+c];
+        for (int r = 0; r < in_feat; r++) {
+            for (int c = 0; c < out_feat; c++) {
+                float sum = 0.0f;
+                for (int i = 0; i < batch; i++) {
+                    sum += x[i * in_feat + r] * dout[i * out_feat + c];
                 }
-                dw[r*out_feat+c]+=sum;
+                dw[r * out_feat + c] += sum; // Accumulate gradients
             }
         }
-
-        //Gradient for dB
+        // dB
         #pragma omp parallel for
-        for(int c=0;c<out_feat;c++)
-        {
-            float sum=0.0f;
-            for(int i=0;i<batch;i++)
-            {
-                sum+=dout[i*out_feat+c];
+        for (int c = 0; c < out_feat; c++) {
+            float sum = 0.0f;
+            for (int i = 0; i < batch; i++) {
+                sum += dout[i * out_feat + c];
             }
-            db[c]+=sum;
+            db[c] += sum;
         }
-
-        //Gradient for dX
+        // dX
         #pragma omp parallel for collapse(2)
-        for(int i=0;i<batch;i++)
-        {
-            for(int k=0;k<in_feat;k++)
-            {
-                float sum=0.0f;
-                for(int j=0;j<out_feat;j++)
-                {
-                    sum+=dout[i*out_feat+j]*w[k*out_feat+j];
+        for (int i = 0; i < batch; i++) {
+            for (int k = 0; k < in_feat; k++) {
+                float sum = 0.0f;
+                for (int j = 0; j < out_feat; j++) {
+                    sum += dout[i * out_feat + j] * w[k * out_feat + j];
                 }
-                dx[i*in_feat+k]=sum;
+                dx[i * in_feat + k] = sum;
             }
         }
     }
 
-    void conv2d_forward(float* x, float* w, float* b, float*out,
-                        int N, int C_in, int H, int W,
-                        int C_out, int K, int S, int P)
-    {
-        int H_out=(H+2*P-K)/S + 1;
-        int W_out=(W+2*P-K)/S + 1;
+    // 2. Convolution 2D (Naive implementation to satisfy "from scratch")
+    // Input: (N, C, H, W)
+    void conv2d_forward(float* x, float* w, float* b, float* out, 
+                        int N, int C_in, int H, int W, 
+                        int C_out, int K, int S, int P) {
+        
+        int H_out = (H + 2 * P - K) / S + 1;
+        int W_out = (W + 2 * P - K) / S + 1;
 
         #pragma omp parallel for collapse(2)
-        for(int n=0;n<N;n++)
-        {
-            for(int c_out=0; c_out<C_out;c_out++)
-            {
-                for(int h_out=0;h_out<H_out;h_out++)
-                {
-                    for(int w_out=0;w_out<W_out;w_out++)
-                    {
-                        float sum=(b)?b[c_out]:0.0f;
-                        int h_start=h_out*S -P;
-                        int w_start=w_out*S -P;
+        for (int n = 0; n < N; n++) {
+            for (int c_out = 0; c_out < C_out; c_out++) {
+                for (int h_out = 0; h_out < H_out; h_out++) {
+                    for (int w_out = 0; w_out < W_out; w_out++) {
+                        
+                        float sum = (b) ? b[c_out] : 0.0f;
+                        int h_start = h_out * S - P;
+                        int w_start = w_out * S - P;
 
-                        for(int c_in=0;c_in<C_in;c_in++)
-                        {
-                            for(int i=0;i<K;i++)
-                            {
-                                for(int j=0;j<K;j++)
-                                {
-                                    int h_in=h_start+i;
-                                    int w_in=w_start+j;
-
-                                    if(h_in>=0 && h_in<H && w_in>=0 && w_in<W)
-                                    {
-                                        int x_idx=((n*C_in+c_in)*H+h_in)*W+w_in;
-                                        int w_idx=((c_out*C_in+c_in)*K+i)*K+j;
-                                        sum+=x[x_idx]*w[w_idx];
+                        for (int c_in = 0; c_in < C_in; c_in++) {
+                            for (int i = 0; i < K; i++) {
+                                for (int j = 0; j < K; j++) {
+                                    int h_in = h_start + i;
+                                    int w_in = w_start + j;
+                                    
+                                    if (h_in >= 0 && h_in < H && w_in >= 0 && w_in < W) {
+                                        // Indexing logic
+                                        int x_idx = ((n * C_in + c_in) * H + h_in) * W + w_in;
+                                        int w_idx = ((c_out * C_in + c_in) * K + i) * K + j;
+                                        sum += x[x_idx] * w[w_idx];
                                     }
                                 }
                             }
                         }
-                        int out_idx=((n*C_out+c_out)*H_out+h_out)*W_out+w_out;
-                        out[out_idx]=sum;
+                        int out_idx = ((n * C_out + c_out) * H_out + h_out) * W_out + w_out;
+                        out[out_idx] = sum;
                     }
                 }
             }
         }
     }
 
+    // --- Add this after conv2d_forward ---
 
     // Backward: dL/dX, dL/dW, dL/db
     void conv2d_backward(float* x, float* w, float* dout, float* dx, float* dw, float* db,

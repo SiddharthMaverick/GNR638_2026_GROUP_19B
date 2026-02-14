@@ -49,7 +49,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
     handlers=[
-        logging.FileHandler("training_metrics_data_1.log"),
+        logging.FileHandler("training.log"),
         logging.StreamHandler()
     ]
 )
@@ -242,7 +242,7 @@ def evaluate(model, images, labels, name="Val"):
     
     for i in range(0, len(images), BATCH_SIZE):
         x_batch, y_batch = get_batch(images, labels, i, BATCH_SIZE)
-        logits = model(x_batch) 
+        logits = model(x_batch)
         metrics.update(logits, y_batch)
         
     return metrics.print_report() # Returns the accuracy
@@ -251,7 +251,6 @@ def evaluate(model, images, labels, name="Val"):
 
 # --- Main ---
 def train():
-    full_imgs, full_lbls, _ = load_dataset("data_1")
     # Respect `DATA_PATH` if caller changed globals via CLI
     global DATA_PATH
     full_imgs, full_lbls, _ = load_dataset(DATA_PATH)
@@ -337,7 +336,9 @@ def train():
         # Save Best Model Checkpoint
         if val_acc > best_val_acc:
             best_val_acc = val_acc
-            save_checkpoint(model, "best_model_data_1.pkl")
+            dataset_name = os.path.basename(DATA_PATH.rstrip('/\\'))
+            best_ckpt = os.path.join(SAVE_DIR, f"best_model_{dataset_name}.pkl")
+            save_checkpoint(model, best_ckpt)
 
     # --- END OF TRAINING PRO STEPS ---
     
@@ -349,15 +350,16 @@ def train():
     logger.info(f"\n=== Training Complete in {int(hours)}h {int(minutes)}m {seconds:.1f}s ===")
     
     # 1. Save Final Model
-    save_checkpoint(model, "final_model_data_1.pkl")
+    dataset_name = os.path.basename(DATA_PATH.rstrip('/\\'))
+    final_ckpt = os.path.join(SAVE_DIR, f"final_model_{dataset_name}.pkl")
+    save_checkpoint(model, final_ckpt)
     
     # 2. Save Training History
-    # Also save the total time to your history json so you have a record of it!
     history["total_time_seconds"] = total_time_seconds 
-    
-    with open("training_history_data_1.json", "w") as f:
+    history_file = os.path.join(SAVE_DIR, f"training_history_{dataset_name}.json")
+    with open(history_file, "w") as f:
         json.dump(history, f, indent=4)
-    logger.info("Saved training history to training_history_data_1.json")
+    logger.info(f"Saved training history to {history_file}")
     
 
 if __name__ == "__main__":
