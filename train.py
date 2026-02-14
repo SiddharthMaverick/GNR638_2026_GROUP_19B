@@ -42,6 +42,7 @@ import json   # <-- Added for saving training history
 import my_framework as nn
 from model import LeNet
 from profiler import profile_model
+import sys
 
 # --- Logger Configuration ---
 logging.basicConfig(
@@ -60,6 +61,8 @@ LR = 0.01
 EPOCHS = 100
 CLASSES = 10
 IMG_SIZE = 32
+DATA_PATH = "data_1"
+SAVE_DIR = "."
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -249,7 +252,12 @@ def evaluate(model, images, labels, name="Val"):
 # --- Main ---
 def train():
     full_imgs, full_lbls, _ = load_dataset("data_1")
-    if not full_imgs: return
+    # Respect `DATA_PATH` if caller changed globals via CLI
+    global DATA_PATH
+    full_imgs, full_lbls, _ = load_dataset(DATA_PATH)
+    if not full_imgs:
+        logger.info("No images found. Exiting.")
+        return
 
     combined = list(zip(full_imgs, full_lbls))
     random.shuffle(combined)
@@ -265,7 +273,7 @@ def train():
     optimizer = nn.SGD(model.parameters(), lr=LR)
     criterion = nn.CrossEntropyLoss()
     
-    profile_model(model, input_size=(3, 32, 32))
+    profile_model(model, input_size=(3, IMG_SIZE, IMG_SIZE))
     logger.info(f"Training on {len(train_imgs)}, Validating on {len(val_imgs)}")
 
     # --- PROFESSIONAL TRACKING VARIABLES ---
@@ -353,5 +361,45 @@ def train():
     
 
 if __name__ == "__main__":
-    set_seed(42)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Train LeNet on a dataset folder (each class in its own folder).")
+    parser.add_argument("--data-path", default="data_1", help="Path to dataset root (default: data_1)")
+    parser.add_argument("--epochs", type=int, default=EPOCHS, help="Number of epochs")
+    parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Batch size")
+    parser.add_argument("--lr", type=float, default=LR, help="Learning rate")
+    parser.add_argument("--img-size", type=int, default=IMG_SIZE, help="Image size (square)")
+    parser.add_argument("--classes", type=int, default=CLASSES, help="Number of classes")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--save-dir", default='.', help="Directory to save checkpoints/history")
+    parser.add_argument("--eval-only", action='store_true', help="Skip training and only evaluate using final_model_data_1.pkl if present")
+    parser.add_argument("--epochs-quick", type=int, default=2, help="If set, override epochs for quick run (used when debugging)")
+
+    args = parser.parse_args()
+
+    # Apply CLI overrides to globals used throughout the script
+    BATCH_SIZE = args.batch_size
+    LR = args.lr
+    EPOCHS = args.epochs if args.epochs > 0 else args.epochs_quick
+    IMG_SIZE = args.img_size
+    CLASSES = args.classes
+    DATA_PATH = args.data_path
+    SAVE_DIR = args.save_dir
+
+    set_seed(args.seed)
+
+    if args.eval_only:
+        # Try to load final model and run full evaluation
+        model = LeNet()
+        chk = os.path.join(SAVE_DIR, 'final_model_data_1.pkl')
+        if os.path.exists(chk):
+            load_checkpoint(model, chk)
+            imgs, lbls, _ = load_dataset(DATA_PATH)
+            if imgs:
+                acc = evaluate(model, imgs, lbls, name='FullData')
+                logger.info(f"Evaluation accuracy on {DATA_PATH}: {acc:.2f}%")
+        else:
+            logger.info(f"Checkpoint not found at {chk}. Nothing to evaluate.")
+        sys.exit(0)
+
     train()
