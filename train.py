@@ -71,6 +71,9 @@ def set_seed(seed=42):
 # --- Checkpoint Utility ---
 def save_checkpoint(model, filename):
     """Saves the model's parameters by converting ctypes to Python lists."""
+    
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    
     # Convert each parameter's C-array data into a standard Python list
     weights = [list(p.data) for p in model.parameters()]
     
