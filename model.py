@@ -1,6 +1,6 @@
 
 import my_framework as nn
-from train import CLASSES
+CLASSES=100
 # --- Model Definition ---
 class LeNet(nn.Module):
     def __init__(self):

@@ -4,7 +4,7 @@ import pickle
 import logging
 import my_framework as nn
 from model import LeNet
-from import_time_script import load_dataset, get_batch, evaluate, train  # reuse functions from your existing file
+from train import load_dataset, get_batch, evaluate, train  # reuse functions from your existing file
 
 # --- Logger Configuration ---
 logging.basicConfig(

@@ -1,7 +1,39 @@
 import time
 import os
 import glob
-import cv2
+import importlib.util
+
+# Dynamically import cv2 if available, otherwise provide a Pillow+numpy fallback
+_cv2_spec = importlib.util.find_spec("cv2")
+if _cv2_spec is not None:
+    import importlib
+    cv2 = importlib.import_module("cv2")
+else:
+    cv2 = None
+    try:
+        from PIL import Image
+        import numpy as _np
+
+        class _CV2Fallback:
+            @staticmethod
+            def imread(path):
+                try:
+                    img = Image.open(path).convert("RGB")
+                    return _np.array(img)
+                except Exception:
+                    return None
+
+            @staticmethod
+            def resize(img, size):
+                try:
+                    pil = Image.fromarray(img.astype('uint8'))
+                    return _np.array(pil.resize((size[0], size[1])))
+                except Exception:
+                    return img
+
+        cv2 = _CV2Fallback()
+    except Exception:
+        cv2 = None
 import math
 import random
 import my_framework as nn
