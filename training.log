@@ -1,0 +1,79 @@
+Global seed set to 42
+Loading dataset from data_1...
+Found 10 classes: ['0', '1', '2', '3', '4'] ...
+Dataset loaded: 60000 images in 75.19 seconds.
+Training on 48000, Validating on 12000
+Global seed set to 42
+Loading dataset from data_1...
+Found 10 classes: ['0', '1', '2', '3', '4'] ...
+Dataset loaded: 60000 images in 189.87 seconds.
+Training on 48000, Validating on 12000
+Global seed set to 42
+Loading dataset from data_1...
+Found 10 classes: ['0', '1', '2', '3', '4'] ...
+Dataset loaded: 60000 images in 203.35 seconds.
+Training on 48000, Validating on 12000
+Global seed set to 42
+Loading dataset from data_1...
+Found 10 classes: ['0', '1', '2', '3', '4'] ...
+Dataset loaded: 60000 images in 141.94 seconds.
+Training on 48000, Validating on 12000
+Global seed set to 42
+Loading dataset from data_1...
+Found 10 classes: ['0', '1', '2', '3', '4'] ...
+Dataset loaded: 60000 images in 153.97 seconds.
+Training on 48000, Validating on 12000
+Global seed set to 42
+Loading dataset from data_1...
+Found 10 classes: ['0', '1', '2', '3', '4'] ...
+Dataset loaded: 60000 images in 194.54 seconds.
+Training on 48000, Validating on 12000
+
+Epoch 1/1 | Time: 116.4s | Loss: 0.8032 | Train Acc: 73.70%
+--- Evaluating on Epoch 1 Val ---
+
+Overall Accuracy: 86.12% (10334/12000)
+Class      Precision  Recall     F1-Score  
+----------------------------------------
+0          0.9475     0.8373     0.8890
+1          0.9666     0.9567     0.9617
+2          0.8647     0.8815     0.8730
+3          0.9145     0.7451     0.8211
+4          0.8390     0.8909     0.8642
+5          0.9150     0.7974     0.8521
+6          0.8312     0.9706     0.8955
+7          0.9464     0.8165     0.8767
+8          0.6502     0.9095     0.7583
+9          0.8454     0.7910     0.8173
+----------------------------------------
+Macro Avg  0.8721     0.8596     0.8609
+
+   [!] Model checkpoint saved to .\best_model_data_1.pkl
+
+=== Training Complete in 0h 2m 22.1s ===
+   [!] Model checkpoint saved to .\final_model_data_1.pkl
+Saved training history to .\training_history_data_1.json
+=== TESTING MODE (FULL DATASET) ===
+[!] Loaded weights from best_model_data_1.pkl
+Loading dataset from data_1...
+Found 10 classes: ['0', '1', '2', '3', '4'] ...
+Dataset loaded: 60000 images in 142.85 seconds.
+--- Evaluating on Test (Full Dataset) ---
+
+Overall Accuracy: 95.86% (57514/60000)
+Class      Precision  Recall     F1-Score  
+----------------------------------------
+0          0.9723     0.9772     0.9747
+1          0.9746     0.9864     0.9805
+2          0.9494     0.9689     0.9590
+3          0.9624     0.9434     0.9528
+4          0.9801     0.9343     0.9566
+5          0.9463     0.9679     0.9570
+6          0.9692     0.9845     0.9768
+7          0.9311     0.9725     0.9514
+8          0.9496     0.9298     0.9396
+9          0.9512     0.9170     0.9338
+----------------------------------------
+Macro Avg  0.9586     0.9582     0.9582
+
+Test Accuracy (Full): 95.86%
