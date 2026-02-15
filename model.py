@@ -1,10 +1,9 @@
 
 import my_framework as nn
 
-CLASSES = 10  # data_1 has 10 classes (digits 0-9)
 # --- Model Definition ---
 class LeNet(nn.Module):
-    def __init__(self):
+    def __init__(self,num_classes=10):
         self.conv1 = nn.Conv2d(3, 6, 5, stride=1, padding=0) 
         self.relu1 = nn.ReLU()
         self.pool1 = nn.MaxPool2d(2, 2)
@@ -17,7 +16,7 @@ class LeNet(nn.Module):
         self.relu3 = nn.ReLU()
         self.fc2 = nn.Linear(120, 84)
         self.relu4 = nn.ReLU()
-        self.fc3 = nn.Linear(84, CLASSES)
+        self.fc3 = nn.Linear(84, num_classes)
 
     def forward(self, x):
         x = self.conv1(x); x = self.relu1(x); x = self.pool1(x)
@@ -35,7 +34,7 @@ class LeNet(nn.Module):
    # Simple CNN with 3 convolution layers and 2 Fully connected layers
 
 class SimpleCNN3(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes=10):
         # Conv Layer 1: 3 → 32 channels
         self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1)
         self.relu1 = nn.ReLU()
@@ -54,7 +53,7 @@ class SimpleCNN3(nn.Module):
         # Fully Connected Layers
         self.fc1 = nn.Linear(128 * 4 * 4, 256)
         self.relu4 = nn.ReLU()
-        self.fc2 = nn.Linear(256, CLASSES)
+        self.fc2 = nn.Linear(256, num_classes)
 
     def forward(self, x):
         x = self.conv1(x); x = self.relu1(x); x = self.pool1(x)
@@ -98,7 +97,7 @@ class DepthwiseSeparableConv(nn.Module):
 
 # --- MobileNet (simplified for CIFAR-100) ---
 class MobileNet(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes=10):
         # Initial standard conv
         self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1)
         self.relu1 = nn.ReLU()
@@ -119,7 +118,7 @@ class MobileNet(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=4, stride=1)
 
         # Final classifier
-        self.fc = nn.Linear(512, CLASSES)
+        self.fc = nn.Linear(512, num_classes)
 
     def forward(self, x):
         x = self.conv1(x); x = self.relu1(x)

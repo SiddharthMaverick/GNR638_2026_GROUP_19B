@@ -59,7 +59,6 @@ logger = logging.getLogger(__name__)
 BATCH_SIZE = 32
 LR = 0.01
 EPOCHS = 100
-CLASSES = 10
 IMG_SIZE = 32
 DATA_PATH = "data_1"
 SAVE_DIR = "."
@@ -100,78 +99,62 @@ def load_checkpoint(model, filename):
     
 # --- Metrics Utility ---
 class Metrics:
-    def __init__(self):
+    def __init__(self, num_classes=10):
+        self.num_classes = num_classes
         self.reset()
-
+    
     def reset(self):
         self.correct = 0
         self.total = 0
-        self.confusion_matrix = [[0] * CLASSES for _ in range(CLASSES)]
+        self.confusion_matrix = [[0] * self.num_classes for _ in range(self.num_classes)]
 
     def update(self, logits, targets):
         batch_size = logits.shape[0]
         for i in range(batch_size):
             max_logit = -1e9
             pred_idx = -1
-            for c in range(CLASSES):
-                val = logits.data[i * CLASSES + c]
+            for c in range(self.num_classes):
+                val = logits.data[i * self.num_classes + c]
                 if val > max_logit:
                     max_logit = val
                     pred_idx = c
             
             true_idx = -1
-            for c in range(CLASSES):
-                if targets.data[i * CLASSES + c] > 0.5:
+            for c in range(self.num_classes):
+                if targets.data[i * self.num_classes + c] > 0.5:
                     true_idx = c
                     break
             
             if pred_idx == true_idx: self.correct += 1
             self.total += 1
-            if 0 <= pred_idx < CLASSES and 0 <= true_idx < CLASSES:
+            if 0 <= pred_idx < self.num_classes and 0 <= true_idx < self.num_classes:
                 self.confusion_matrix[true_idx][pred_idx] += 1
 
     def print_report(self):
-        accuracy = 100.0 * self.correct / self.total if self.total > 0 else 0
-        logger.info(f"\nOverall Accuracy: {accuracy:.2f}% ({self.correct}/{self.total})")
+            accuracy = 100.0 * self.correct / self.total if self.total > 0 else 0
+            logger.info(f"\nOverall Accuracy: {accuracy:.2f}% ({self.correct}/{self.total})")
+            logger.info(f"{'Class':<10} {'Precision':<10} {'Recall':<10} {'F1-Score':<10}")
+            logger.info("-" * 40)
 
-        logger.info(f"{'Class':<10} {'Precision':<10} {'Recall':<10} {'F1-Score':<10}")
+            macro_p, macro_r, macro_f1 = 0, 0, 0
 
-        logger.info("-" * 40)
-
-       
-
-        macro_p, macro_r, macro_f1 = 0, 0, 0
-
-        for c in range(CLASSES):
-
-            tp = self.confusion_matrix[c][c]
-
-            fp = sum(self.confusion_matrix[x][c] for x in range(CLASSES)) - tp
-
-            fn = sum(self.confusion_matrix[c][x] for x in range(CLASSES)) - tp
-
-           
-
-            p = tp / (tp + fp) if (tp + fp) > 0 else 0
-
-            r = tp / (tp + fn) if (tp + fn) > 0 else 0
-
-            f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0
-
-           
-
-            logger.info(f"{c:<10} {p:.4f}     {r:.4f}     {f1:.4f}")
-
-            macro_p += p; macro_r += r; macro_f1 += f1
-
-           
-
-        logger.info("-" * 40)
-
-        logger.info(f"Macro Avg  {macro_p/CLASSES:.4f}     {macro_r/CLASSES:.4f}     {macro_f1/CLASSES:.4f}\n")
-
-        
-        return accuracy
+            # FIXED: Use self.num_classes instead of the global CLASSES
+            for c in range(self.num_classes):
+                tp = self.confusion_matrix[c][c]
+                fp = sum(self.confusion_matrix[x][c] for x in range(self.num_classes)) - tp
+                fn = sum(self.confusion_matrix[c][x] for x in range(self.num_classes)) - tp
+            
+                p = tp / (tp + fp) if (tp + fp) > 0 else 0
+                r = tp / (tp + fn) if (tp + fn) > 0 else 0
+                f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0
+            
+                logger.info(f"{c:<10} {p:.4f}     {r:.4f}     {f1:.4f}")
+                macro_p += p; macro_r += r; macro_f1 += f1
+            
+            logger.info("-" * 40)
+            logger.info(f"Macro Avg  {macro_p/self.num_classes:.4f}     {macro_r/self.num_classes:.4f}     {macro_f1/self.num_classes:.4f}\n")
+            
+            return accuracy
     
 
 
@@ -239,9 +222,9 @@ def get_batch(images, labels, idx, batch_size):
 
 
 # --- Evaluation ---
-def evaluate(model, images, labels, name="Val"):
+def evaluate(model, images, labels,CLASSES=10, name="Val"):
     logger.info(f"--- Evaluating on {name} ---")
-    metrics = Metrics()
+    metrics = Metrics(num_classes=CLASSES)
     
     for i in range(0, len(images), BATCH_SIZE):
         x_batch, y_batch = get_batch(images, labels, i, BATCH_SIZE)
@@ -255,7 +238,7 @@ def evaluate(model, images, labels, name="Val"):
 # --- Main ---
 def train():
     # Respect `DATA_PATH` if caller changed globals via CLI
-    global DATA_PATH
+    global DATA_PATH,CLASSES
     full_imgs, full_lbls, _ = load_dataset(DATA_PATH)
     if not full_imgs:
         logger.info("No images found. Exiting.")
@@ -271,7 +254,7 @@ def train():
     val_imgs = list(full_imgs[split_idx:])
     val_lbls = list(full_lbls[split_idx:])
 
-    model = LeNet()
+    model = LeNet(num_classes=CLASSES)
     optimizer = nn.SGD(model.parameters(), lr=LR)
     criterion = nn.CrossEntropyLoss()
     
@@ -292,7 +275,7 @@ def train():
     for epoch in range(EPOCHS):
         start = time.time()
         total_loss = 0
-        metrics = Metrics()
+        metrics = Metrics(num_classes=CLASSES)
         
         combined_train = list(zip(train_imgs, train_lbls))
         random.shuffle(combined_train)
@@ -329,7 +312,7 @@ def train():
         logger.info(f"\nEpoch {epoch+1}/{EPOCHS} | Time: {time.time()-start:.1f}s | Loss: {avg_loss:.4f} | Train Acc: {train_acc:.2f}%")
         
         # Evaluate and get validation accuracy
-        val_acc = evaluate(model, val_imgs, val_lbls, f"Epoch {epoch+1} Val")
+        val_acc = evaluate(model, val_imgs, val_lbls, CLASSES=args.classes if args.classes else 10, name=f"Epoch {epoch+1} Val")
         
         # Update history
         history["train_loss"].append(avg_loss)
@@ -370,11 +353,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Train LeNet on a dataset folder (each class in its own folder).")
     parser.add_argument("--data-path", default="data_1", help="Path to dataset root (default: data_1)")
-    parser.add_argument("--epochs", type=int, default=EPOCHS, help="Number of epochs")
+    parser.add_argument("--epochs", type=int, help="Number of epochs")
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Batch size")
     parser.add_argument("--lr", type=float, default=LR, help="Learning rate")
     parser.add_argument("--img-size", type=int, default=IMG_SIZE, help="Image size (square)")
-    parser.add_argument("--classes", type=int, default=CLASSES, help="Number of classes")
+    parser.add_argument("--classes", type=int, help="Number of classes")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--save-dir", default='.', help="Directory to save checkpoints/history")
     parser.add_argument("--eval-only", action='store_true', help="Skip training and only evaluate using final_model_data_1.pkl if present")
@@ -395,8 +378,8 @@ if __name__ == "__main__":
 
     if args.eval_only:
         # Try to load final model and run full evaluation
-        model = LeNet()
-        chk = os.path.join(SAVE_DIR, 'final_model_data_1.pkl')
+        model = LeNet(num_classes=args.classes if args.classes else 10)
+        chk = os.path.join(SAVE_DIR, f'final_model_{DATA_PATH}.pkl')
         if os.path.exists(chk):
             load_checkpoint(model, chk)
             imgs, lbls, _ = load_dataset(DATA_PATH)

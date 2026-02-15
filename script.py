@@ -4,7 +4,7 @@ import pickle
 import logging
 import my_framework as nn
 from model import LeNet
-from train import load_dataset, get_batch, evaluate, train  # reuse functions from your existing file
+import train as train_module # Import as module so we can override its globals
 
 # --- Logger Configuration ---
 logging.basicConfig(
@@ -14,9 +14,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def load_model(weights_path=None):
-    """Initialize LeNet and optionally load weights."""
-    model = LeNet()
+def load_model(num_classes, weights_path=None):
+    """Initialize LeNet with dynamic classes and optionally load weights."""
+    model = LeNet(num_classes=num_classes) # FIXED: Pass num_classes here
     if weights_path and os.path.exists(weights_path):
         with open(weights_path, 'rb') as f:
             weights = pickle.load(f)
@@ -34,33 +34,31 @@ def run_train(dataset_path, weights_path=None):
     logger.info(f"Using weights from: {weights_path if weights_path else 'scratch'}")
     logger.info("Note: Use train.py directly with CLI args for full control over hyperparameters")
     logger.info("Example: python train.py --data-path data_1 --epochs 10 --batch-size 32")
-    # For now, log that user should use train.py directly
     if weights_path:
         logger.info(f"Pre-loaded checkpoint: {weights_path}")
     logger.info("Skipping training from script.py. Use train.py instead.")
     return
 
-def run_test(dataset_path, weights_path):
+def run_test(dataset_path, weights_path, num_classes):
     logger.info("=== TESTING MODE ===")
     if not weights_path:
         logger.error("Testing requires a weights file path!")
         return
-    model = load_model(weights_path)
+    model = load_model(num_classes, weights_path)
     
     # Load dataset
-    full_images, full_labels, _ = load_dataset(dataset_path)
+    full_images, full_labels, _ = train_module.load_dataset(dataset_path)
     if not full_images:
         logger.error("No images loaded from dataset.")
         return
     
     # Use SAME split as training (80/20) for consistency
-    # Testing on validation split (last 20%) like training did
     split_idx = int(len(full_images) * 0.8)
-    test_images = list(full_images[split_idx:])  # Use validation split for testing
+    test_images = list(full_images[split_idx:])  
     test_labels = list(full_labels[split_idx:])
     
     logger.info(f"Testing on {len(test_images)} images (validation split, same as training)")
-    acc = evaluate(model, test_images, test_labels, name="Test (Val Split)")
+    acc = train_module.evaluate(model, test_images, test_labels, CLASSES=num_classes, name="Test (Val Split)")
     logger.info(f"Final Test Accuracy: {acc:.2f}%")
 
 if __name__ == "__main__":
@@ -72,19 +70,25 @@ if __name__ == "__main__":
     parser.add_argument("--weights", default=None,
                         help="Optional path to model weights file")
     parser.add_argument("--test-full", action='store_true', 
-                        help="If set, test on ENTIRE dataset. Otherwise tests on validation split (consistent with training).")
+                        help="If set, test on ENTIRE dataset.")
+    parser.add_argument("--classes", type=int, help="Number of classes")
     args = parser.parse_args()
-
+    
+    CLASSES = args.classes if args.classes else 10
+    
+    # CRITICAL FIX: Inject the class count into train.py's global scope 
+    # so train_module.get_batch() formats the one-hot vectors correctly.
+    train_module.CLASSES = CLASSES 
+    
     if args.mode == "train":
         run_train(args.dataset, args.weights)
     elif args.mode == "test":
         if args.test_full:
-            # Alternative: test on full dataset
             logger.info("=== TESTING MODE (FULL DATASET) ===")
-            model = load_model(args.weights)
-            images, labels, _ = load_dataset(args.dataset)
+            model = load_model(CLASSES, args.weights)
+            images, labels, _ = train_module.load_dataset(args.dataset)
             if images:
-                acc = evaluate(model, images, labels, name="Test (Full Dataset)")
+                acc = train_module.evaluate(model, images, labels, CLASSES=CLASSES, name="Test (Full Dataset)")
                 logger.info(f"Test Accuracy (Full): {acc:.2f}%")
         else:
-            run_test(args.dataset, args.weights)
+            run_test(args.dataset, args.weights, CLASSES)
