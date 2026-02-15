@@ -17,6 +17,9 @@ for data_2
 ```bash
 python train.py --data-path data_2 --epochs 100 --batch-size 32 --lr 0.01 --img-size 32 --classes 100 --seed 42 --save-dir ./checkpoints    
 ```
+
+The weights after training are stored in checkpoints folder
+
 then test using script.py
 ```bash
 python script.py --mode test --dataset data_1 --weights best_model_data_1.pkl --test-full
