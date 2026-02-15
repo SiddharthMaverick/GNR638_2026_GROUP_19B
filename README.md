@@ -22,7 +22,7 @@ The weights after training are stored in checkpoints folder
 
 then test using script.py
 ```bash
-python script.py --mode test --dataset data_1 --classes 10 --weights best_model_data_1.pkl --test-full
+python script.py --mode test --dataset data_1 --classes 10 --weights checkpoints/best_model_data_1.pkl --test-full
 ```
 
 
