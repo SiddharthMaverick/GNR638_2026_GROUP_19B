@@ -6561,3 +6561,23 @@ Found 100 classes: ['apple', 'aquarium_fish', 'baby', 'bear', 'beaver'] ...
 
 Epoch 43/100 | Time: 440.6s | Loss: 0.0093 | Train Acc: 99.79%
 --- Evaluating on Epoch 43 Val ---
+
+Overall Accuracy: 96.78% (11614/12000)
+Class      Precision  Recall     F1-Score  
+----------------------------------------
+0          0.9791     0.9834     0.9812
+1          0.9882     0.9831     0.9857
+2          0.9579     0.9664     0.9621
+3          0.9623     0.9631     0.9627
+4          0.9776     0.9611     0.9693
+5          0.9566     0.9709     0.9637
+6          0.9772     0.9828     0.9800
+7          0.9646     0.9712     0.9679
+8          0.9467     0.9564     0.9516
+9          0.9643     0.9374     0.9507
+----------------------------------------
+Macro Avg  0.9675     0.9676     0.9675
+
+   [!] Model checkpoint saved to ./checkpoints\best_model_data_1.pkl
+Dataset loaded: 50000 images in 106.65 seconds.
+--- Evaluating on Test (Full Dataset) ---
